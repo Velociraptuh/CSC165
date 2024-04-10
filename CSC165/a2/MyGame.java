@@ -1,9 +1,3 @@
-/*
-Beast Battle
-A Project by Nick Chace and Malkylm Wright
-
-*/
-
 package a2;
 
 import tage.*;
@@ -26,9 +20,9 @@ public class MyGame extends VariableFrameRateGame
 	private int counter=0;
 	private double lastFrameTime, currFrameTime, elapsTime, diffTime;
 	
-	private GameObject dol, cube, plane, torus, sphere, magnet1, magnet2, magnet3, magnet4, grass, xAxis, yAxis, zAxis, ground, sky, terrain, player, paper_player, player3, player4, player2, objSpider;
-	private ObjShape dol_S, cube_S, plane_S, torus_S, sphere_S, magnet_S, grass_S, xAxis_S, yAxis_S, zAxis_S, ground_S, sky_S, terrain_S, player_S, spider_S;
-	private TextureImage doltx, carpetTx, paperTx, woodTx, stoneTx, magnetTx, grassTx, groundTx, skyTx, hillsTx, grass2Tx, playerTx, paper_playerTx, player2Tx, player3Tx, player4Tx, spiderTx;
+	private GameObject dol, cube, plane, torus, sphere, magnet1, magnet2, magnet3, magnet4, grass, xAxis, yAxis, zAxis, ground, sky, terrain, player, paper_player, player3, player4, player2;
+	private ObjShape dol_S, cube_S, plane_S, torus_S, sphere_S, magnet_S, grass_S, xAxis_S, yAxis_S, zAxis_S, ground_S, sky_S, terrain_S, player_S;
+	private TextureImage doltx, carpetTx, paperTx, woodTx, stoneTx, magnetTx, grassTx, groundTx, skyTx, hillsTx, grass2Tx, playerTx, paper_playerTx, player2Tx, player3Tx, player4Tx;
 	private Light light1;
 	private int fluffyClouds, lakeIslands; //Skyboxes
 	
@@ -57,7 +51,6 @@ public class MyGame extends VariableFrameRateGame
 	public void loadShapes()
 	{	dol_S = new ImportedModel("dolphinHighPoly.obj");
 		player_S = new ImportedModel("ninja_lowpoly.obj");
-		spider_S = new ImportedModel("spider.obj");
 		cube_S = new Cube();
 		plane_S = new Plane();
 		sphere_S = new Sphere();
@@ -132,10 +125,6 @@ public class MyGame extends VariableFrameRateGame
 		initialScale = (new Matrix4f()).scaling(0.9f);
 		player4.setLocalTranslation(initialTranslation);
 		player4.setLocalScale(initialScale);
-
-		objSpider = new GameObject(GameObject.root(), spider_S);
-		initialTranslation = (new Matrix4f()).translation(9, 0, 6);
-		objSpider.setLocalLocation(initialTranslation);
 		
 		cube = new GameObject(GameObject.root(), cube_S, woodTx);
 		initialTranslation = (new Matrix4f()).translation(5,0,3);
