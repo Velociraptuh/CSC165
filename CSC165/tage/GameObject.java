@@ -3,10 +3,6 @@ import org.joml.*;
 import java.util.*;
 import tage.shapes.*;
 import tage.physics.PhysicsObject;
-import tage.rml.Matrix4f;
-import tage.rml.Vector3f;
-
-import java.lang.Math;
 
 /**
 * GameObject holds the data associated with a node in the scenegraph.
@@ -89,8 +85,6 @@ public class GameObject
 
 	private PhysicsObject physicsObject;
 	private boolean isTerrain = false;
-	
-	private float yawAmount = 0f, pitchAmount = 0f;
 
 	//------------------ CONSTRUCTORS -----------------
 
@@ -176,6 +170,10 @@ public class GameObject
 
 	/** returns a reference to the RenderStates associated with this GameObject */
 	public RenderStates getRenderStates() { return renderStates; }
+
+	/*public GameObject getAvatar(){
+		return this;
+	}*/
 
 	/** returns a boolean value that is true if this GameObject is a terrain plane */
 	public boolean isTerrain() { return isTerrain; }
@@ -308,7 +306,7 @@ public class GameObject
 	public Matrix4f getWorldScale() { return new Matrix4f(worldScale); }
 
 	/** returns a forward-facing Vector3f based on the local rotation matrix */
-	public Vector3f getLocalForwardVector() { return new Vector3f(localRotation.getColumn(2, v)); }
+	public Vector3f getLocalForwardVector() { return new Vector3f(localRotation.getColumn(2, v)); } 
 
 	/** returns a upward-facing Vector3f based on the local rotation matrix */
 	public Vector3f getLocalUpVector() { return new Vector3f(localRotation.getColumn(1, v)); }
@@ -329,7 +327,7 @@ public class GameObject
 	public Vector3f getLocalLocation() { return new Vector3f(localTranslation.getTranslation(v)); }
 
 	/** returns the location of this object in world space */
-	public Vector3f getWorldLocation() {  return new Vector3f(worldTranslation.getTranslation(v)); }
+	public Vector3f getWorldLocation() { return new Vector3f(worldTranslation.getTranslation(v)); }
 
 	/** sets the location of this object relative to its parent node */
 	public void setLocalLocation(Vector3f location) { localTranslation.setTranslation(location); update(); }
@@ -368,28 +366,6 @@ public class GameObject
 
 	/** returns a boolean that is true if the object applies its parent's scale to its position */
 	public boolean appliesParentScaleToPosition() { return applyParentScaleToPosition; }
-	
-	// ---------------Student Additions ---------------------------------------
-	
-	//Global Yaw
-	/** Rotates the game object by specified amount around the World Y axis. 0.006f is a recommended amount*/
-	public void yaw(float amount){
-
-		yawAmount = amount;
-		Matrix4f newYaw = (new Matrix4f()).rotation((float)yawAmount, 0, 1, 0);
-		newYaw.mul(getWorldRotation());
-		setLocalRotation(newYaw);
-		
-	}
-	
-	/** Rotates the game object by a specified amount around the object's local Z axis. 0.006f is a recommended amount*/
-	public void pitch(float amount){
-		
-		pitchAmount = amount;
-		Matrix4f newPitch = (new Matrix4f()).rotation((float)pitchAmount, getLocalRightVector());
-		newPitch.mul(getLocalRotation());
-		setLocalRotation(newPitch);
-	}
 
 	// ------------------ accessors for physics object ------------------------------
 
@@ -427,6 +403,26 @@ public class GameObject
 			Engine.getEngine().getRenderSystem().addTexture((TextureImage)this);
 		}
 	}
-	
-	
+
+	// ------------------- Methods for pitch and yaw -------------
+
+	/**Yaw command implemented in GameObject */
+	public void yaw(float amount){
+		Vector3f up = this.getWorldUpVector();
+		Matrix4f yRot = (new Matrix4f()).rotation((float)(org.joml.Math.toRadians(amount)), 0, 1, 0);
+		Matrix4f currRoto = this.getLocalRotation();
+		Matrix4f newRoto = yRot.mul(currRoto);
+		this.setLocalRotation(newRoto);
+	}
+
+	/**Pitch command implemented in GameObject */
+	public void pitch(float amount){
+		Vector3f right = this.getLocalRightVector();
+		Matrix4f yRot = (new Matrix4f()).rotation((float)(org.joml.Math.toRadians(amount)), right);
+		Matrix4f currRoto = this.getLocalRotation();
+		Matrix4f newRoto = yRot.mul(currRoto);
+		this.setLocalRotation(newRoto);
+	}
+
+
 }
