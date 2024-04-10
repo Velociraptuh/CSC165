@@ -96,26 +96,6 @@ public class RenderSystem extends JFrame implements GLEventListener
 		screenSizeY = ssY;
 		if (!isInFullScreenMode) setSize(screenSizeX, screenSizeY);
 	}
-	
-	/** Returns the window screenSizeX variable */
-	public int getWindowXSize(){
-		return screenSizeX;
-	}
-	
-	/** Returns the window screenSizeY variable */
-	public int getWindowYSize(){
-		return screenSizeY;
-	}
-	
-	/** Returns the width of canvas */
-	public int getXSize(){
-		return myCanvas.getWidth();
-	}
-	
-	/** Returns the height of canvas */
-	public int getYSize(){
-		return myCanvas.getHeight();
-	}
 
 	/** gets a reference to the current OpenGL canvas used by the engine */
 	public GLCanvas getGLCanvas() { return myCanvas; }

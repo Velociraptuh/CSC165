@@ -33,13 +33,14 @@ public class HUDmanager
 	private GLUT glut = new GLUT();
 	private Engine engine;
 
-	private String HUD1string, HUD2string, HUD3string, HUD4string;
-	private float[] HUD1color, HUD2color, HUD3color, HUD4color;
+	private String HUD1string, HUD2string, HUD3string, HUD4string, HUD5string;
+	private float[] HUD1color, HUD2color, HUD3color, HUD4color, HUD5color;
 	private int HUD1font = GLUT.BITMAP_TIMES_ROMAN_24;
 	private int HUD2font = GLUT.BITMAP_TIMES_ROMAN_24;
 	private int HUD3font = GLUT.BITMAP_TIMES_ROMAN_24;
 	private int HUD4font = GLUT.BITMAP_TIMES_ROMAN_24;
-	private int HUD1x, HUD1y, HUD2x, HUD2y, HUD3x, HUD3y, HUD4x, HUD4y;
+	private int HUD5font = GLUT.BITMAP_TIMES_ROMAN_24;
+	private int HUD1x, HUD1y, HUD2x, HUD2y, HUD3x, HUD3y, HUD4x, HUD4y, HUD5x, HUD5y;
 	private int hudColorProgram;
 
 	// The constructor is called by the engine, and should not be called by the game application.
@@ -51,10 +52,12 @@ public class HUDmanager
 		HUD2string = "";
 		HUD3string = "";
 		HUD4string = "";
+		HUD5string = "";
 		HUD1color = new float[3];
 		HUD2color = new float[3];
 		HUD3color = new float[3];
 		HUD4color = new float[3];
+		HUD5color = new float[3];
 	}
 	
 	protected void setGLcanvas(GLCanvas g) { myCanvas = g; }
@@ -71,10 +74,13 @@ public class HUDmanager
 		glut.glutBitmapString (HUD2font, HUD2string);
 		gl4bc.glWindowPos2d (HUD3x, HUD3y);
 		prepHUDcolor(HUD3color, hcp);
-		glut.glutBitmapString(HUD1font, HUD3string);
+		glut.glutBitmapString (HUD3font, HUD3string);
 		gl4bc.glWindowPos2d (HUD4x, HUD4y);
 		prepHUDcolor(HUD4color, hcp);
-		glut.glutBitmapString(HUD1font, HUD4string);
+		glut.glutBitmapString (HUD4font, HUD4string);
+		gl4bc.glWindowPos2d (HUD5x, HUD5y);
+		prepHUDcolor(HUD5color, hcp);
+		glut.glutBitmapString (HUD5font, HUD5string);
 	}
 
 	/** sets HUD #1 to the specified text string, color, and location */
@@ -92,7 +98,7 @@ public class HUDmanager
 		HUD2x = x;
 		HUD2y = y;
 	}
-	
+
 	/** sets HUD #3 to the specified text string, color, and location */
 	public void setHUD3(String string, Vector3f color, int x, int y)
 	{	HUD3string = string;
@@ -100,8 +106,8 @@ public class HUDmanager
 		HUD3x = x;
 		HUD3y = y;
 	}
-	
-	/** sets HUD #3 to the specified text string, color, and location */
+
+	/** sets HUD #4 to the specified text string, color, and location */
 	public void setHUD4(String string, Vector3f color, int x, int y)
 	{	HUD4string = string;
 		HUD4color[0]=color.x(); HUD4color[1]=color.y(); HUD4color[2]=color.z();
@@ -109,17 +115,28 @@ public class HUDmanager
 		HUD4y = y;
 	}
 
+	/** sets HUD #5 to the specified text string, color, and location */
+	public void setHUD5(String string, Vector3f color, int x, int y)
+	{	HUD5string = string;
+		HUD5color[0]=color.x(); HUD5color[1]=color.y(); HUD5color[2]=color.z();
+		HUD5x = x;
+		HUD5y = y;
+	}
+
 	/** sets HUD #1 font - available fonts are listed above. */
 	public void setHUD1font(int font) { HUD1font = font; }
 
 	/** sets HUD #2 font - available fonts are listed above. */
 	public void setHUD2font(int font) { HUD2font = font; }
-	
+
 	/** sets HUD #3 font - available fonts are listed above. */
 	public void setHUD3font(int font) { HUD3font = font; }
-	
+
 	/** sets HUD #4 font - available fonts are listed above. */
 	public void setHUD4font(int font) { HUD4font = font; }
+
+	/** sets HUD #5 font - available fonts are listed above. */
+	public void setHUD5font(int font) { HUD5font = font; }
 
 	// Kludge to ensure HUD renders with correct color - do not call from game application.
 	// Draws a single dot at a distant location to set the desired HUD color.
