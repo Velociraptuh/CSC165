@@ -1,835 +1,630 @@
-/*
-Malkylm Wright
-CSC 165-02
-Scott Gordon
-
-Assignment 2 - Dolphin Tour:
-
-Controls for Dolphin:
-Keyboard:
-	W/2 - Moves Dolphin Forward
-	S/3 - Moves Dolphin Backward
-	A - Yaws Dolphin Left
-	D - Yaws Dolphin Right
-	Up Arrow - Pitches Dolphin Forward
-	Down Arrow - Pitches Dolphin Downward
-
-
-Controls for Camera:
-Keyboard: (Sky/Overhead Camera)
-	I - Zooms the sky camera in
-	O - Zooms the sky camera out
-	U - Pans sky camera North
-	H - Pans sky camera West
-	J - Pans sky camera South
-	K - Pans sky camera East
-	1  - Toggles Visibility of World Axes
-Controller DualSense: (Orbital Controller)
-	Right Joy Stick Up and Down - Radial motion, zooms in and out
-	Right Joy Stick Left and Right - Azimuthal motion, rotates around avatar
-	Left Joy Stick Up and Down - Elevation, increases elevation above/below avatar
-
-In this version, the lava pool is bigger, objects rotate upon visiting, and the chest blinks upon collection of all items.
-
-
-*/
-//Package
 package a2;
 
-//Imports
 import tage.*;
 import tage.shapes.*;
-
 import tage.input.*;
-import tage.input.action.*;
-import tage.nodeControllers.InvisibilityController;
-import tage.nodeControllers.RotationController;
-import net.java.games.input.*;
-import net.java.games.input.Component.Identifier.*;
+import tage.nodeControllers.*;
 
 import java.lang.Math;
-import java.util.Random;
-//import java.awt.*;
+import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
-//import java.util.*;
 import javax.swing.*;
 import org.joml.*;
-//import org.w3c.dom.events.Event;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import tage.networking.IGameConnection.ProtocolType;
 
 public class MyGame extends VariableFrameRateGame
 {
-	//Fields
-	private static Engine engine; //Game engine object
+	private static Engine engine;
+
+	private boolean paused=false;
+	private int counter=0;
+	private double lastFrameTime, currFrameTime, elapsTime, diffTime;
 	
-
-	private boolean paused=false, onDolphin=true, colliding=false, visitedObj1=false, visitedObj2=false, visitedObj3=false, visitedObj4=false, gameOver=false, allVisited=false, touchingLava=false, axisLines=true, visitLock1=false, visitLock2=false, visitLock3=false, visitLock4=false, isClientConnected=false;
-	private int counter=0, score=0, holder=0;
-	private float rotationAmount = 0, moveSpd = 2, turnSpd = 2, toggleSpd;
-	private double lastFrameTime, currFrameTime, elapsTime, timePassed;
-	private Random rand = new Random();
-
-	//Input Stuff
-	private InputManager im;
-	private GhostManager gm;
-
-	//Orbit stuff
-	private Camera camera;
-	private Camera secondaryCam;
-	private CameraOrbit3D orbitController;
-	private CameraController sCamController;
-
-	//Node Controllers
-	private NodeController ic, rc1, rc2, rc3, rc4;
-	//private InvisibilityController ic;
-
-	//Viewport Stuff
-	Viewport mainVP;
-	Viewport secondVP;
-	private int mainVLeft;
-	private int mainVRight;
-	private int mainVBot;
-	private int mainVTop;
-	private int secVLeft;
-	private int secVRight;
-	private int secVBot;
-	private int secVTop;
-
-	private GameObject dol;
-	//GameObject for ground
-	private GameObject ground;
-	//GameObjects for scattered items
-	private GameObject objCube, objSphere, objTorus, objPlane, objDiamond, objLava, objChest, objXLine, objYLine, objZLine, objGhost;
-	//Refridgerator magnets
-	private GameObject objMagnet1, objMagnet2, objMagnet3, objMagnet4;
-
-	private ObjShape dolS;
-	//Shape for ground
-	private ObjShape groundS;
-	//ObjShapes for scattered items
-	private ObjShape cubeS, sphereS, torusS, planeS, diamondS, lavaS, chestS, axisS, xS, yS, zS, ghostS;
-	private ObjShape magnetS;
-
-	private TextureImage doltx;
-	//Texture image for ground
-	private TextureImage groundTx;
-	//Texture image for scattered items
-	private TextureImage cubeTx, sphereTx, torusTx, planeTx, diamondTx, lavaTx, chestTx, xTx, yTx, zTx, ghostTx;
-	private TextureImage magnet1Tx, magnet2Tx, magnet3Tx, magnet4Tx;
-	
-	private String serverAddress;
-	private int serverPort;
-	private ProtocolType serverProtocol;
-	private ProtocolClient protClient;
-
+	private GameObject dol, cube, plane, torus, sphere, magnet1, magnet2, magnet3, magnet4, grass, xAxis, yAxis, zAxis, ground, sky, terrain, player, paper_player, player3, player4, player2;
+	private ObjShape dol_S, cube_S, plane_S, torus_S, sphere_S, magnet_S, grass_S, xAxis_S, yAxis_S, zAxis_S, ground_S, sky_S, terrain_S, player_S;
+	private TextureImage doltx, carpetTx, paperTx, woodTx, stoneTx, magnetTx, grassTx, groundTx, skyTx, hillsTx, grass2Tx, playerTx, paper_playerTx, player2Tx, player3Tx, player4Tx;
 	private Light light1;
-
-	public MyGame(String serverAddress, int serverPort, String protocol) {
-		super(); 
-		gm = new GhostManager(this);
-		this.serverAddress = serverAddress;
-		this.serverPort = serverPort;
-		if (protocol.toUpperCase().compareTo("TCP") == 0)
-			this.serverProtocol = ProtocolType.TCP;
-		else
-			this.serverProtocol = ProtocolType.UDP;
-	}
+	private int fluffyClouds, lakeIslands; //Skyboxes
 	
+	private boolean ridingDolphin = false;
+	private boolean sitesVisited[] = new boolean[4];
+	private int stress = 0;
+	private boolean lose = false;
+	private boolean enableAxis = true;
+	
+	private InputManager im, im2;
+	private CameraOrbitController orbitController;
+	private CameraOverheadController overheadController;
+	private NodeController rc_cube, rc_sphere, rc_torus, rc_plane, hc_cube, hc_torus, hc_plane, hc_sphere, rc_sky; //Rotation and Hover
+
+	public MyGame() { super(); }
 
 	public static void main(String[] args)
-	{	MyGame game = new MyGame(args[0], Integer.parseInt(args[1]), args[2]); //Creates game object
-		engine = new Engine(game); //Puts game into engine object created earlier
-		game.initializeSystem(); //Runs game initalization step
-		game.game_loop(); //Stars game loop (update)
+	{	MyGame game = new MyGame();
+		FindComponents.main(args);
+		engine = new Engine(game);
+		game.initializeSystem();
+		game.game_loop();
 	}
 
 	@Override
-	/**Load all game shapes into engine */
 	public void loadShapes()
-	{	dolS = new ImportedModel("dolphinHighPoly.obj");
-		cubeS = new Cube();
-		magnetS = new Cube();
-		groundS = new Plane();
-		xS = new Line(new Vector3f(0f, 0f, 0f), new Vector3f(400f, 0f, 0f));
-		yS = new Line(new Vector3f(0f, 0f, 0f), new Vector3f(0f, 400f, 0f));
-		zS = new Line(new Vector3f(0f, 0f, 0f), new Vector3f(0f, 0f, 400f));
-		chestS = new Cube();
-		torusS = new Torus();
-		planeS = new Plane();
-		sphereS = new Sphere();
-		lavaS = new Plane();
-		diamondS = new ManualDiamond();
-		ghostS = new Sphere();
+	{	dol_S = new ImportedModel("dolphinHighPoly.obj");
+		player_S = new ImportedModel("ninja_lowpoly.obj");
+		cube_S = new Cube();
+		plane_S = new Plane();
+		sphere_S = new Sphere();
+		torus_S = new Sphere();
+		magnet_S = new Plane();
+		grass_S = new Grass();
+		xAxis_S = new Line( (new Vector3f(0,0,0)), (new Vector3f(1,0,0)) );
+		yAxis_S = new Line( (new Vector3f(0,0,0)), (new Vector3f(0,1,0)) );
+		zAxis_S = new Line( (new Vector3f(0,0,0)), (new Vector3f(0,0,1)) );
+		ground_S = new Plane();
+		sky_S = new Sphere();
+		terrain_S = new TerrainPlane(1000);
 	}
 
 	@Override
-	/**Load all textures into engine */
 	public void loadTextures()
 	{	doltx = new TextureImage("Dolphin_HighPolyUV.png");
-		cubeTx = new TextureImage("cubeTexture.jpg");
-		torusTx = new TextureImage("flowersTexture.jpg");
-		planeTx = new TextureImage("canTexture.png");
-		sphereTx = new TextureImage("faceTexture.png");
-		groundTx = new TextureImage("waterTexture.png");
-		magnet1Tx = new TextureImage("magnet1Texture.png");
-		magnet2Tx = new TextureImage("magnet2Texture.png");
-		magnet3Tx = new TextureImage("magnet3Texture.png");
-		magnet4Tx = new TextureImage("magnet4Texture.png");
-		lavaTx = new TextureImage("lavaTexture.png");
-		chestTx = new TextureImage("chest.png");
-		xTx = new TextureImage("xAxis.png");
-		yTx = new TextureImage("yAxis.png");
-		zTx = new TextureImage("zAxis.png");
-		diamondTx = new TextureImage("goldTexture.jpg");
-		ghostTx = new TextureImage("redDolphin.jpg");
+		playerTx = new TextureImage("Ninja_uvmap_test.png");
+		paper_playerTx = new TextureImage("Ninja_uvmap_test2.png");
+		player2Tx = new TextureImage("Ninja_uvmap_test3.png");
+		player3Tx = new TextureImage("Ninja_uvmap_test4.png");
+		player4Tx = new TextureImage("Ninja_uvmap_test5.png");
+		carpetTx = new TextureImage("carpet.JPG");
+		paperTx = new TextureImage("paper.JPG");
+		woodTx = new TextureImage("wood_planks.jpg");
+		stoneTx = new TextureImage("stone.jpg");
+		magnetTx = new TextureImage("magnet.png");			//Note: Magnet texture is a play on the "Your did it" picture
+		grassTx = new TextureImage("grasspurpleflowers.jpg");
+		groundTx = new TextureImage("bricks.jpg");
+		skyTx = new TextureImage("sky.png");
+		hillsTx = new TextureImage("hills.png");
+		grass2Tx = new TextureImage("grass2.jpg");
 	}
 
 	@Override
-	/**Build the declared objects */
 	public void buildObjects()
-	{	Matrix4f initialTranslation, initialScale, initialRotation, rotateX, rotateY, rotateZ;
-		Vector3f xAxis, yAxis, zAxis;
-	 
+	{	Matrix4f initialTranslation, initialScale;
 
 		// build dolphin in the center of the window
-		dol = new GameObject(GameObject.root(), dolS, doltx);
-		initialTranslation = (new Matrix4f()).translation(0,1f,0);
+		dol = new GameObject(GameObject.root(), dol_S, doltx);
+		initialTranslation = (new Matrix4f()).translation(0,0,0);
 		initialScale = (new Matrix4f()).scaling(3.0f);
-		initialRotation = (new Matrix4f()).rotation(0, 0, 0, 0);
 		dol.setLocalTranslation(initialTranslation);
 		dol.setLocalScale(initialScale);
-		dol.setLocalRotation(initialRotation);
 		
-		//Ground Object
-		ground = new GameObject(GameObject.root(), groundS, groundTx);
-		initialTranslation = (new Matrix4f()).translation(0, 0, 0);
-		initialScale = (new Matrix4f()).scaling(100.0f);
+		player = new GameObject(GameObject.root(), player_S, playerTx);
+		initialTranslation = (new Matrix4f()).translation(5,4,5);
+		initialScale = (new Matrix4f()).scaling(0.9f);
+		player.setLocalTranslation(initialTranslation);
+		player.setLocalScale(initialScale);
+		
+		paper_player = new GameObject(GameObject.root(), player_S, paper_playerTx);
+		initialTranslation = (new Matrix4f()).translation(8,4,5);
+		initialScale = (new Matrix4f()).scaling(0.9f);
+		paper_player.setLocalTranslation(initialTranslation);
+		paper_player.setLocalScale(initialScale);
+		
+		player2 = new GameObject(GameObject.root(), player_S, player2Tx);
+		initialTranslation = (new Matrix4f()).translation(10,4,5);
+		initialScale = (new Matrix4f()).scaling(0.9f);
+		player2.setLocalTranslation(initialTranslation);
+		player2.setLocalScale(initialScale);
+		
+		player3 = new GameObject(GameObject.root(), player_S, player3Tx);
+		initialTranslation = (new Matrix4f()).translation(12,4,5);
+		initialScale = (new Matrix4f()).scaling(0.9f);
+		player3.setLocalTranslation(initialTranslation);
+		player3.setLocalScale(initialScale);
+		
+		player4 = new GameObject(GameObject.root(), player_S, player4Tx);
+		initialTranslation = (new Matrix4f()).translation(3,4,5);
+		initialScale = (new Matrix4f()).scaling(0.9f);
+		player4.setLocalTranslation(initialTranslation);
+		player4.setLocalScale(initialScale);
+		
+		cube = new GameObject(GameObject.root(), cube_S, woodTx);
+		initialTranslation = (new Matrix4f()).translation(5,0,3);
+		initialScale = (new Matrix4f()).scaling(0.5f);
+		cube.setLocalTranslation(initialTranslation);
+		cube.setLocalScale(initialScale);
+		
+		plane = new GameObject(GameObject.root(), plane_S, paperTx);
+		initialTranslation = (new Matrix4f()).translation(-3,0,-3);
+		initialScale = (new Matrix4f()).scaling(0.3f);
+		plane.setLocalTranslation(initialTranslation);
+		plane.setLocalScale(initialScale);
+		
+		torus = new GameObject(GameObject.root(), torus_S, stoneTx);
+		initialTranslation = (new Matrix4f()).translation(4,0,-3);
+		initialScale = (new Matrix4f()).scaling(1.3f);
+		torus.setLocalTranslation(initialTranslation);
+		torus.setLocalScale(initialScale);
+		
+		sphere = new GameObject(GameObject.root(), sphere_S, carpetTx);
+		initialTranslation = (new Matrix4f()).translation(-3,0,1);
+		initialScale = (new Matrix4f()).scaling(0.4f);
+		sphere.setLocalTranslation(initialTranslation);
+		sphere.setLocalScale(initialScale);
+		
+		//magnet1 = new GameObject(dol, magnet_S, magnetTx);			I was already setting Dolphin to parent
+		magnet1 = new GameObject(GameObject.root(), magnet_S, magnetTx);	//But this way is more appearent
+		initialTranslation = (new Matrix4f()).translation(-3,100,-3);
+		initialScale = (new Matrix4f()).scaling(0.1f);
+		magnet1.setLocalTranslation(initialTranslation);
+		magnet1.setLocalScale(initialScale);
+		magnet1.setParent(dol);
+		magnet1.propagateTranslation(true);
+		magnet1.propagateRotation(true);
+		
+		//magnet2 = new GameObject(dol, magnet_S, magnetTx);
+		magnet2 = new GameObject(GameObject.root(), magnet_S, magnetTx);
+		initialTranslation = (new Matrix4f()).translation(-3,100,-3);
+		initialScale = (new Matrix4f()).scaling(0.1f);
+		magnet2.setLocalTranslation(initialTranslation);
+		magnet2.setLocalScale(initialScale);
+		magnet2.setParent(dol);
+		magnet2.propagateTranslation(true);
+		magnet2.propagateRotation(true);
+		
+		//magnet3 = new GameObject(dol, magnet_S, magnetTx);
+		magnet3 = new GameObject(GameObject.root(), magnet_S, magnetTx);
+		initialTranslation = (new Matrix4f()).translation(-3,100,-3);
+		initialScale = (new Matrix4f()).scaling(0.1f);
+		magnet3.setLocalTranslation(initialTranslation);
+		magnet3.setLocalScale(initialScale);
+		magnet3.setParent(dol);
+		magnet3.propagateTranslation(true);
+		magnet3.propagateRotation(true);
+		
+		//magnet4 = new GameObject(dol, magnet_S, magnetTx);
+		magnet4 = new GameObject(GameObject.root(), magnet_S, magnetTx);
+		initialTranslation = (new Matrix4f()).translation(-3,100,-3);
+		initialScale = (new Matrix4f()).scaling(0.1f);
+		magnet4.setLocalTranslation(initialTranslation);
+		magnet4.setLocalScale(initialScale);
+		magnet4.setParent(dol);
+		magnet4.propagateTranslation(true);
+		magnet4.propagateRotation(true);
+		
+		grass = new GameObject(GameObject.root(), grass_S, grassTx);
+		initialTranslation = (new Matrix4f()).translation(2,0,1);
+		initialScale = (new Matrix4f()).scaling(1.0f);
+		grass.setLocalTranslation(initialTranslation);
+		grass.setLocalScale(initialScale);
+		
+		xAxis = new GameObject(GameObject.root(), xAxis_S);
+		(xAxis.getRenderStates()).setColor(new Vector3f(1,0,0));
+		yAxis = new GameObject(GameObject.root(), yAxis_S);
+		(yAxis.getRenderStates()).setColor(new Vector3f(0,1,0));
+		zAxis = new GameObject(GameObject.root(), zAxis_S);
+		(zAxis.getRenderStates()).setColor(new Vector3f(0,0,1));
+		
+		ground = new GameObject(GameObject.root(), ground_S, groundTx);
+		initialTranslation = (new Matrix4f()).translation(0,-1,0);
+		initialScale = (new Matrix4f()).scaling(1);
 		ground.setLocalTranslation(initialTranslation);
 		ground.setLocalScale(initialScale);
-
-		//Build cube 
-		objCube = new GameObject(GameObject.root(), cubeS, cubeTx); //Create new game object
-		initialTranslation = (new Matrix4f()).translation(getSpawnCoord(), 2, getSpawnCoord()); //Create the initial transformation matrices (in this sense its the initial translation and the initial scaling of the cube)
-		initialScale = (new Matrix4f()).scaling(2f);
-		objCube.setLocalTranslation(initialTranslation); //Actually set the different transformations
-		objCube.setLocalScale(initialScale);
-
-		//Axis spawn
-		objXLine = new GameObject(GameObject.root(), xS, xTx);
-		(objXLine.getRenderStates()).setColor(new Vector3f(1f, 0f, 0f));
-		//initialScale = (new Matrix4f()).scaling(400f, 0.05f, 0.05f);
-		//objXLine.setLocalScale(initialScale);
-
-		objYLine = new GameObject(GameObject.root(), yS, yTx);
-		(objYLine.getRenderStates()).setColor(new Vector3f(0f, 0f, 1f));
-		//initialScale = (new Matrix4f()).scaling(0.05f, 400f, 0.05f);
-		//objYLine.setLocalScale(initialScale);
-
-		objZLine = new GameObject(GameObject.root(), zS, zTx);
-		(objZLine.getRenderStates()).setColor(new Vector3f(0f, 1f, 0f));
-		//initialScale = (new Matrix4f()).scaling(0.05f, 0.05f, 400f);
-		//objZLine.setLocalScale(initialScale);
-
-		//Chest Object
-		objChest = new GameObject(GameObject.root(), chestS, chestTx);
-		initialTranslation = (new Matrix4f()).translation(2, 0.5f, 2);
-		initialScale = (new Matrix4f()).scale(0.5f);
-		objChest.setLocalTranslation(initialTranslation);
-		objChest.setLocalScale(initialScale);
-
-		//Magnet seriess
-		objMagnet1 = new GameObject(GameObject.root(), magnetS, magnet1Tx);
-		initialTranslation = (new Matrix4f()).translation(2, 0, 2);
-		initialScale = (new Matrix4f()).scaling(0.08f, 0.1f, 0.025f);
-		objMagnet1.setLocalTranslation(initialTranslation);
-		objMagnet1.setLocalScale(initialScale);
-
-		objMagnet2 = new GameObject(GameObject.root(), magnetS, magnet2Tx);
-		initialTranslation = (new Matrix4f()).translation(2, 0, 2);
-		initialScale = (new Matrix4f()).scaling(0.08f, 0.1f, 0.025f);
-		objMagnet2.setLocalTranslation(initialTranslation);
-		objMagnet2.setLocalScale(initialScale);
-
-		objMagnet3 = new GameObject(GameObject.root(), magnetS, magnet3Tx);
-		initialTranslation = (new Matrix4f()).translation(2, 0, 2);
-		initialScale = (new Matrix4f()).scaling(0.08f, 0.1f, 0.025f);
-		objMagnet3.setLocalTranslation(initialTranslation);
-		objMagnet3.setLocalScale(initialScale);
-
-		objMagnet4 = new GameObject(GameObject.root(), magnetS, magnet4Tx);
-		initialTranslation = (new Matrix4f()).translation(2, 0, 2);
-		initialScale = (new Matrix4f()).scaling(0.08f, 0.1f, 0.025f);
-		objMagnet4.setLocalTranslation(initialTranslation);
-		objMagnet4.setLocalScale(initialScale);
-
-		//Torus
-		objTorus = new GameObject(GameObject.root(), torusS, torusTx);
-		initialTranslation = (new Matrix4f()).translation(getSpawnCoord(), 0.25f, getSpawnCoord());
-		initialScale = (new Matrix4f()).scaling(1f);
-		objTorus.setLocalTranslation(initialTranslation);
-		objTorus.setLocalScale(initialScale);
-
-		//Plane
-		objPlane = new GameObject(GameObject.root(), planeS, planeTx);
-		initialTranslation = (new Matrix4f()).translation(getSpawnCoord(), 3, getSpawnCoord());
-		xAxis = objPlane.getLocalRightVector();
-		yAxis = objPlane.getLocalUpVector();
-		Matrix4f planeRotation; //This is how rotation is done
-		rotateX = (new Matrix4f()).rotation((float)Math.toRadians(270), xAxis);
-		float randTurn = (float)(Math.toRadians(rand.nextInt(360)));
-		rotateY = (new Matrix4f()).rotation(randTurn, yAxis);
-		planeRotation = rotateY.mul(rotateX.mul(objPlane.getLocalRotation())); 
-		initialScale = (new Matrix4f()).scaling(3f);
-		objPlane.setLocalTranslation(initialTranslation);
-		objPlane.setLocalRotation(planeRotation);
-		objPlane.setLocalScale(initialScale);
-
-		//Sphere
-		objSphere = new GameObject(GameObject.root(), sphereS, sphereTx);
-		initialTranslation = (new Matrix4f()).translation(getSpawnCoord(), 3, getSpawnCoord());
-		initialScale = (new Matrix4f()).scaling(3f);
-		objSphere.setLocalTranslation(initialTranslation);
-		objSphere.setLocalScale(initialScale);
-
-		//Lava Object
-		objLava = new GameObject(GameObject.root(), lavaS, lavaTx);
-		initialTranslation = (new Matrix4f()).translation(getSpawnCoord(), 0.1f, getSpawnCoord());
-		initialScale = (new Matrix4f()).scaling(3.5f);
-		objLava.setLocalTranslation(initialTranslation);
-		objLava.setLocalScale(initialScale);
-
-
-		//Diamond Object, which is the child object of the dolphin
-		objDiamond = new GameObject(GameObject.root(), diamondS, diamondTx);
-		initialScale = (new Matrix4f()).scaling(0.5f, 1f, 0.5f);
-		initialScale = (new Matrix4f()).scaling(0.15f);
-		objDiamond.setLocalScale(initialScale);
-		objDiamond.setParent(dol);
-		objDiamond.propagateTranslation(true);
-		objDiamond.propagateRotation(false);
-	}
-	
-	/**Gets the single value coordinate to return to the translation function. This increases an offset padding so shapes don't spawn in the middle of the screen */
-	public float getSpawnCoord() {
-		float x = rand.nextFloat(14);
-		x += 5;
-		int n = rand.nextInt(5);
-		if(n%2 == 0){
-			x *= -1;
-		}
-		return x;
+		ground.setIsTerrain(true);
+		(ground.getRenderStates()).setTiling(2);
+		(ground.getRenderStates()).setTileFactor(1);
+		
+		sky = new GameObject(GameObject.root(), sky_S, skyTx);
+		initialTranslation = (new Matrix4f()).translation(0,-5,0);
+		initialScale = (new Matrix4f()).scaling(1);
+		sky.setLocalTranslation(initialTranslation);
+		sky.setLocalScale(initialScale);
+		
+		terrain = new GameObject(GameObject.root(), terrain_S, grass2Tx);
+		initialTranslation = (new Matrix4f()).translation(0f,0f,0f);
+		terrain.setLocalTranslation(initialTranslation);
+		initialScale = (new Matrix4f()).scale(40f, 1f, 40f);
+		terrain.setLocalScale(initialScale);
+		terrain.setHeightMap(hillsTx);
+		
+		terrain.getRenderStates().setTiling(1);
+		terrain.getRenderStates().setTileFactor(10);
 	}
 
 	@Override
-	/**Initialize all lights in game */
 	public void initializeLights()
-	{	Light.setGlobalAmbient(0.5f, 0.5f, 0.5f);
-		light1 = new Light();
+	{	Light.setGlobalAmbient(0.5f, 0.5f, 0.5f);			//Ambient
+		light1 = new Light();								//Positional?
 		light1.setLocation(new Vector3f(5.0f, 4.0f, 2.0f));
 		(engine.getSceneGraph()).addLight(light1);
 	}
+	
+	@Override
+	public void loadSkyBoxes(){
+		fluffyClouds = (engine.getSceneGraph()).loadCubeMap("fluffyClouds");
+		lakeIslands = (engine.getSceneGraph()).loadCubeMap("lakeIslands");
+		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
+		(engine.getSceneGraph()).setSkyBoxEnabled(true);
+	}
 
 	@Override
-	/**Initialize game settings */
 	public void initializeGame()
 	{	lastFrameTime = System.currentTimeMillis();
 		currFrameTime = System.currentTimeMillis();
 		elapsTime = 0.0;
-		(engine.getRenderSystem()).setWindowDimensions(1900,1000);
-
-		// ------------- Input Section -------------------
+		diffTime = 0.0;
+		
 		im = engine.getInputManager();
-
+		FwdAction fwdAction = new FwdAction(this);
+		FwdActionReversed fwdActionReversed = new FwdActionReversed(this);
+		TurnAction turnAction = new TurnAction(this);
+		TurnActionReversed turnActionReversed = new TurnActionReversed(this);
+		PitchAction pitchAction = new PitchAction(this);
+		RenderingAction renderingAction = new RenderingAction(xAxis, yAxis, zAxis);
+		//HopOnDolphin hod = new HopOnDolphin(this, ridingDolphin);			Don't need to hop on / off
+		
+		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Button._1, fwdAction,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Button._2, fwdActionReversed,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Axis.X, turnAction,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Axis.Y, fwdActionReversed,		//Idk why but it needs to be reversed
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		
+		im.associateActionWithAllKeyboards(net.java.games.input.Component.Identifier.Key.W, fwdAction,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllKeyboards(net.java.games.input.Component.Identifier.Key.S, fwdActionReversed,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllKeyboards(net.java.games.input.Component.Identifier.Key.A, turnActionReversed,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllKeyboards(net.java.games.input.Component.Identifier.Key.D, turnAction,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		
+		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Button._0, renderingAction,
+		InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		im.associateActionWithAllKeyboards(net.java.games.input.Component.Identifier.Key.E, renderingAction,
+		InputManager.INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		
+		//im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Button._3, hod,
+		//InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		
+		/*
+		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Axis.X, turnAction,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Axis.Y, fwdAction,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Axis.RY, pitchAction,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Axis.RZ, fwdAction,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Axis.RX, turnAction,
+		InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		*/
+		
+		//Ps4 Controller
+		//X & Y = Left Stick (As you expect) 
+		//Z is Horizontal Right stick, RZ is Vertical Right Stick
+		//RX is Left Trigger (L2 / LT), RY is Right Trigger (R2 / RT)
+		
+		rc_cube = new RotationController(engine, new Vector3f(0,1,0), 0.001f);
+		rc_plane = new RotationController(engine, new Vector3f(0,1,0), 0.001f);
+		rc_sphere = new RotationController(engine, new Vector3f(0,1,0), 0.001f);
+		rc_torus = new RotationController(engine, new Vector3f(0,1,0), 0.001f);
+		rc_sky = new RotationController(engine, new Vector3f(0,1,0), 0.0001f);
+		hc_cube = new HoverController(engine, 1.3f, 0.0002f);
+		hc_plane = new HoverController(engine, 1.1f, 0.00022f);
+		hc_sphere = new HoverController(engine, 1.5f, 0.0001f);
+		hc_torus = new HoverController(engine, 1.2f, 0.00017f);
+		rc_cube.addTarget(cube); rc_plane.addTarget(plane); rc_sphere.addTarget(sphere); rc_torus.addTarget(torus);
+		rc_sky.addTarget(sky); 
+		hc_cube.addTarget(cube); hc_plane.addTarget(plane); hc_sphere.addTarget(sphere); hc_torus.addTarget(torus);
+		(engine.getSceneGraph()).addNodeController(rc_cube); (engine.getSceneGraph()).addNodeController(rc_sphere); 
+		(engine.getSceneGraph()).addNodeController(rc_plane); (engine.getSceneGraph()).addNodeController(rc_torus);
+		(engine.getSceneGraph()).addNodeController(hc_cube); (engine.getSceneGraph()).addNodeController(hc_plane);
+		(engine.getSceneGraph()).addNodeController(hc_sphere); (engine.getSceneGraph()).addNodeController(hc_torus);
+		(engine.getSceneGraph()).addNodeController(rc_sky);
+		rc_sky.toggle();
+		
+		Camera c = (engine.getRenderSystem()).getViewport("LEFT").getCamera();
+		Camera c2 = (engine.getRenderSystem()).getViewport("RIGHT").getCamera();
+		String gpName = im.getFirstGamepadName();				//Need Gamepad plugged in or it breaks
+		System.out.println("gpName: "+gpName);
+		orbitController = new CameraOrbitController(c, dol, gpName, engine);
+		overheadController = new CameraOverheadController(c2, dol, gpName, engine);
+		
+		
+		(engine.getRenderSystem()).setWindowDimensions(1900,1000);
+		for(int i = 0; i < sitesVisited.length; i++){
+			sitesVisited[i] = false;
+		} 
 
 		// ------------- positioning the camera -------------
-		camera = (engine.getRenderSystem().getViewport("PRIMARY").getCamera());
-		secondaryCam = (engine.getRenderSystem().getViewport("SECONDARY").getCamera());
-		// ------------- more camera stuff -------------
-		String gpName = im.getFirstGamepadName();
-		
-		orbitController = new CameraOrbit3D(camera, dol, gpName, engine);
-		sCamController = new CameraController(secondaryCam, engine);
-
-
-		FwdAction fwdAc = new FwdAction(this); //add protclient
-		YawAction turnAc = new YawAction(this);
-		PitchAction pitchAc = new PitchAction(this);
-
-		ground.getRenderStates().setTiling(1);
-		ground.getRenderStates().setTileFactor(7);
-
-		//----------------InvisibilityController- Node Controllers ------------------
-		ic = new InvisibilityController(engine, 3f);
-		rc1 = new RotationController(engine, new Vector3f(0, 1, 0), 0.01f);
-		rc2 = new RotationController(engine, new Vector3f(0, 1, 0), 0.01f);
-		rc3 = new RotationController(engine, new Vector3f(0, 1, 0), 0.01f);
-		rc4 = new RotationController(engine, new Vector3f(0, 1, 0), 0.01f);
-		ic.addTarget(objChest);
-		rc1.addTarget(objCube);
-		rc2.addTarget(objPlane);
-		rc3.addTarget(objSphere);
-		rc4.addTarget(objTorus);
-		(engine.getSceneGraph()).addNodeController(ic);
-		(engine.getSceneGraph()).addNodeController(rc1);
-		(engine.getSceneGraph()).addNodeController(rc2);
-		(engine.getSceneGraph()).addNodeController(rc3);
-		(engine.getSceneGraph()).addNodeController(rc4);
-
-		setupNetworking();
+		//(engine.getRenderSystem().getViewport("MAIN").getCamera()).setLocation(new Vector3f(0,0,5));
+	}
 	
+	@Override
+	public void createViewports()
+	{
+		(engine.getRenderSystem()).addViewport("LEFT",0,0,1f,1f);
+		(engine.getRenderSystem()).addViewport("RIGHT",0.75f,0,0.25f,0.25f);
+		
+		Viewport leftVp = (engine.getRenderSystem()).getViewport("LEFT");
+		Viewport rightVp = (engine.getRenderSystem()).getViewport("RIGHT");
+		Camera leftCamera = leftVp.getCamera();
+		Camera rightCamera = rightVp.getCamera();
+		
+		rightVp.setHasBorder(true);
+		rightVp.setBorderWidth(4);
+		rightVp.setBorderColor(0.0f,1.0f,0.0f);
+		
+		leftCamera.setLocation(new Vector3f(0,2,0));
+		leftCamera.setU(new Vector3f(1,0,0));
+		leftCamera.setV(new Vector3f(0,1,0));
+		leftCamera.setN(new Vector3f(0,0,-1));
+		
+		rightCamera.setLocation(new Vector3f(0,2,0));
+		rightCamera.setU(new Vector3f(1,0,0));
+		rightCamera.setV(new Vector3f(0,0,-1));
+		rightCamera.setN(new Vector3f(0,-1,0));
 	}
 
-
-
 	@Override
-	public void createViewports(){
-		(engine.getRenderSystem()).addViewport("PRIMARY", 0, 0, 1f, 1f);
-		(engine.getRenderSystem()).addViewport("SECONDARY", 0, 0.75f, 0.25f, 0.25f);
-		mainVP = (engine.getRenderSystem()).getViewport("PRIMARY");
-		secondVP = (engine.getRenderSystem()).getViewport("SECONDARY");
-		secondVP.setHasBorder(true);
-		secondVP.setBorderWidth(4);
-		secondVP.setBorderColor(0.5f, 0.25f, 0.5f);
-		mainVLeft = (int)mainVP.getActualLeft();
-		mainVRight = (int)mainVP.getActualWidth();
-		mainVBot = (int)mainVP.getActualBottom();
-		mainVTop = (int)mainVP.getActualHeight();
-		secVLeft = (int)secondVP.getActualLeft();
-		secVRight = (int)secondVP.getActualWidth();
-		secVBot = (int)secondVP.getActualBottom();
-		secVTop = (int)secondVP.getActualHeight();
-	}
-
-	@Override
-	/**Continuously run game loop */
 	public void update()
-	{	
+	{	// rotate dolphin if not paused
 		lastFrameTime = currFrameTime;
 		currFrameTime = System.currentTimeMillis();
- 
+		if (!paused) elapsTime += (currFrameTime - lastFrameTime) / 1000.0;
+		diffTime = (currFrameTime - lastFrameTime) / 1000.0;
 		
-		timePassed = (currFrameTime - lastFrameTime) / 1000.0;
-		
-		elapsTime += timePassed;
-
-		//System.out.println(elapsTime);
-		//System.out.println(timePassed);
-
-		Vector3f loc, newLocation, fwd, up, right;
-		Matrix4f currRoto, newRoto, xRot, yRot, zRot, New4fLoco;
-
-		orbitController.updateCameraPosition();
-	
-		
-
-		if(!touchingLava)
-			im.update((float)elapsTime);
-		
-
-		loc = dol.getWorldLocation();
-
-		//Dolphins Diamond
-		
-		//objDiamond.setLocalLocation(loc);
-		New4fLoco = objDiamond.getLocalTranslation();
-		New4fLoco.translation(0, 1.75f, 0);
-		//New4fLoco.mul(1.75f);
-		//newLocation = loc.add(up.x(), up.y(), up.z());
-		objDiamond.setLocalTranslation(New4fLoco);
-		objDiamond.setLocalRotation((new Matrix4f()).rotation((float)elapsTime, 0, 1, 0));
-		
-		//Collision logic
-		checkCollisionObjects();
-
-
-		//Magnet placing
-		if(visitedObj1){
-			if(visitLock1==false){
-				visitLock1 = true;
-				rc1.toggle();
-			}
-			loc = dol.getWorldLocation(); //Aligns the vectors with dolphin
-			fwd = dol.getLocalForwardVector();
-			up = dol.getLocalUpVector();
-			right = dol.getLocalRightVector();
-			up.mul(1f); //Moves the vectors
-			right.mul(-0.1f);
-			newLocation = loc.add(right.x(), right.y(), right.z()).add(up.x(), up.y(), up.z());//Applies changes
-			objMagnet1.setLocalLocation(newLocation); //Sets changes
-			yRot = (new Matrix4f()).rotation((float)Math.toRadians(90), up); //Same run through for rotations
-			currRoto = dol.getLocalRotation();
-			newRoto = yRot.mul(currRoto);
-			objMagnet1.setLocalRotation(newRoto);
+		if(!rc_sky.isEnabled()){
+			//rc_sky.toggle();
 		}
 		
-		if(visitedObj2){
-			if(visitLock2==false){
-				visitLock2=true;
-				rc2.toggle();
-			}
-			loc = dol.getWorldLocation();
-			fwd = dol.getLocalForwardVector();
-			up = dol.getLocalUpVector();
-			right = dol.getLocalRightVector();
-			up.mul(1f);
-			right.mul(0.1f);
-			newLocation = loc.add(right.x(), right.y(), right.z()).add(up.x(), up.y(), up.z());
-			objMagnet2.setLocalLocation(newLocation);
-			yRot = (new Matrix4f()).rotation((float)Math.toRadians(90), up);
-			currRoto = dol.getLocalRotation();
-			newRoto = yRot.mul(currRoto);
-			objMagnet2.setLocalRotation(newRoto);
-		}
+		//Input manager
+		im.update((float)elapsTime);
 		
-		if(visitedObj3){
-			if(visitLock3==false){
-				visitLock3 = true;
-				rc3.toggle();
-			}
-			loc = dol.getWorldLocation();
-			fwd = dol.getLocalForwardVector();
-			up = dol.getLocalUpVector();
-			right = dol.getLocalRightVector();
-			up.mul(0.5f);
-			right.mul(-0.2f);
-			fwd.mul(-0.3f);
-			newLocation = loc.add(right.x(), right.y(), right.z()).add(up.x(), up.y(), up.z()).add(fwd.x(), fwd.y(), fwd.z());
-			objMagnet3.setLocalLocation(newLocation);
-			yRot = (new Matrix4f()).rotation((float)Math.toRadians(0), up);
-			currRoto = dol.getLocalRotation();
-			newRoto = yRot.mul(currRoto);
-			objMagnet3.setLocalRotation(newRoto);
+		//Terrain
+		Vector3f loc = dol.getWorldLocation();
+		float height = terrain.getHeight(loc.x(), loc.z());
+		dol.setLocalLocation(new Vector3f(loc.x(), height, loc.z()));
+		
+		//Put camera on dolphin and keep it there
+		/*
+		if(ridingDolphin == true){
+			Camera cam = (engine.getRenderSystem().getViewport("MAIN").getCamera());
+			Vector3f loc = dol.getWorldLocation();
+			Vector3f fwd = dol.getWorldForwardVector();
+			Vector3f up = dol.getWorldUpVector();
+			Vector3f right = dol.getWorldRightVector();
+			cam.setU(right);
+			cam.setV(up);
+			cam.setN(fwd);
+			cam.setLocation(loc.add(up.mul(1.3f)).add(fwd.mul(-2.5f)));
 		}
-
-		if(visitedObj4){
-			if(visitLock4 == false){
-				visitLock4 = true;
-				rc4.toggle();
-			}
-			loc = dol.getWorldLocation();
-			fwd = dol.getLocalForwardVector();
-			up = dol.getLocalUpVector();
-			right = dol.getLocalRightVector();
-			up.mul(0.5f);
-			right.mul(0.2f);
-			fwd.mul(-0.3f);
-			newLocation = loc.add(right.x(), right.y(), right.z()).add(up.x(), up.y(), up.z()).add(fwd.x(), fwd.y(), fwd.z());
-			objMagnet4.setLocalLocation(newLocation);
-			yRot = (new Matrix4f()).rotation((float)Math.toRadians(0), up);
-			currRoto = dol.getLocalRotation();
-			newRoto = yRot.mul(currRoto);
-			objMagnet4.setLocalRotation(newRoto);
-		}
-
-		if(getDistanceGameObjs(dol, objLava) < 2){
-			touchingLava = true;
-		}
-
-
-		checkGameState();
-		processNetworking((float)elapsTime);
+		*/
+		stress++;
+		collisionDetection();
+		
 
 		// build and set HUD
 		int elapsTimeSec = Math.round((float)elapsTime);
-		
-		
-	
 		String elapsTimeStr = Integer.toString(elapsTimeSec);
-		String dispScore = Integer.toString(score);
 		String counterStr = Integer.toString(counter);
-		String dispStr1 = "Time = " + elapsTimeStr;//"Score = " + score;
-		String dispStr2 = ""; 
-		String dispStr3 = "" + getAvatar().getWorldLocation();
-
-		if(gameOver && !touchingLava){
-			dispStr2 = "You win!";//"Time = " + elapsTimeStr;
-		}else if(gameOver && touchingLava){
-			dispStr2 = "Game Over, touching lava!";
-		}else{
-			dispStr2 = "Score = " + dispScore;
+		String dispStr1 = "Time = " + elapsTimeStr;
+		String dispStr2, dispStr4;
+		if(counter == 4 && lose == false){
+			dispStr2 = "You Win!";
+		} else if(stress >= 3000){
+			dispStr2 = "You Lose";
+			lose = true;
 		}
-	
-		Vector3f hud1Color = new Vector3f(1,1,1);
-		Vector3f hud2Color = new Vector3f(1,1,1);
-		Vector3f hud3Color = new Vector3f(1,1,1);
-
-		//Vector3f hud4Color = new Vector3f(1,1,1);
-		//Vector3f hud5Color = new Vector3f(1,1,1);
-		(engine.getHUDmanager()).setHUD1(dispStr1, hud1Color, mainVLeft + mainVRight/8, 20);
-		(engine.getHUDmanager()).setHUD2(dispStr2, hud2Color, mainVLeft + 2*(mainVRight/8), 20);
-		(engine.getHUDmanager()).setHUD3(dispStr3, hud3Color, secVLeft + secVRight/7, mainVTop-secVBot);
-		//(engine.getHUDmanager()).setHUD4(dispStr4, hud4Color, 500, 50);
-		//(engine.getHUDmanager()).setHUD5(dispStr5, hud5Color, 15, 50);
-	}
-
-	/**Gets distance between dolphin and camera */
-	public float getDistDolCam(){
-		Camera cam = (engine.getRenderSystem().getViewport("MAIN").getCamera()); //Sets up camera object
-		return (dol.getWorldLocation()).distance(cam.getLocation()); 		
-	}
-
-	
-	/**Checks to see if that game is still playing or if the player won  */
-	public void checkGameState(){
-		if( visitedObj1==true && visitedObj2==true && visitedObj3==true && visitedObj4==true){
-			gameOver = true;
-			if(allVisited==false){
-				allVisited=true;
-				ic.toggle();
-			}
-
+		else {
+			dispStr2 = "Score = " + counterStr;
 		}
-		if( touchingLava ){
-			gameOver = true;
-			paused = true;
-		}
-	}
-
-	/**Aligns location and x, y, z vectors with a certain GameObject's */
-	public void resetVectors(Vector3f a, Vector3f b, Vector3f c, Vector3f d, GameObject e){
-		a = e.getWorldLocation();
-		b = e.getLocalRightVector();
-		c = e.getLocalUpVector();
-		d = e.getLocalForwardVector();
-	}
-
-	/**Gets distance between a specified object location and the camera*/
-	public float getDistObjCam(Vector3f x){
-		Camera cam = (engine.getRenderSystem().getViewport("MAIN").getCamera()); //Sets up camera object
-		return x.distance(cam.getLocation());
-	}
-
-	/**Gets distance between two game objects */
-	public float getDistanceGameObjs(GameObject a, GameObject b){
-		Vector3f aVec = a.getWorldLocation();
-		Vector3f bVec = b.getWorldLocation();
-		return aVec.distance(bVec);
-	}
-
-	/**Returns game avatar */
-	public GameObject getAvatar(){
-		return dol;
-	}
-
-	/**Returns engines elapsed time */
-	public float getElapsedTime(){
-		return (float)elapsTime;
-	}
-
-	/**Runs a constant "collision check" to see if the player has visited these sites, and keeps track */
-	public void checkCollisionObjects() {
-		Vector3f dolVec = dol.getWorldLocation();
-		Vector3f loc, newLocation;
-		Vector3f right = dol.getLocalRightVector();
-		Vector3f up = dol.getLocalUpVector();
-		Vector3f fwd = dol.getLocalForwardVector();
-		Vector3f cubeVec = objCube.getWorldLocation(); //obj 1, <3 is a collision
-		Vector3f planeVec = objPlane.getWorldLocation(); //obj 2, <5 is a collision>
-		Vector3f sphereVec = objSphere.getWorldLocation(); //obj 3, <5.25 is a collision
-		Vector3f torusVec = objTorus.getWorldLocation(); //obj 4, if same, 2.5 is a collision
 		
-		//Finish rest of code here on home machine
-		if(getDistanceGameObjs(dol, objCube) < 3 && visitedObj1==false){
-			visitedObj1 = true;
-			score++;
+		String dispStr3 = "Stress = " + Integer.toString(stress);
+		Vector3f hud1Color = new Vector3f(1,0,0);
+		Vector3f hud2Color = new Vector3f(0,0,1);
+		Vector3f hud3Color = new Vector3f(0,1,0);
+		Vector3f hud4Color = new Vector3f(0,1,0.5f);
+		if(stress == 0){
+			dispStr3 = "Calm";
 		}
-		if(getDistanceGameObjs(dol, objPlane) < 5 && visitedObj2==false){
-			visitedObj2 = true;
-			score++;
+		else if(stress >= 1000 && stress < 2000){
+			hud3Color = new Vector3f(1,1,0);
+			 
+		} else if (stress >= 2000){
+			hud3Color = new Vector3f(1,0.2f,0);
+		}else if (stress >= 3000){
+			hud3Color = new Vector3f(1,0,1);
+		} else {
+			hud3Color = new Vector3f(0,1,0);
 		}
-		if(getDistanceGameObjs(dol, objSphere) < 5.25 && visitedObj3==false){
-			visitedObj3 = true;
-			score++;
+		
+		Vector3f dol_location = dol.getLocalLocation();
+		float hud_x = dol_location.x;
+		float hud_y = dol_location.y;
+		float hud_z = dol_location.z;
+		dispStr4 = "" + hud_x + " " + hud_y + " " + hud_z;
+		
+		int screenX = (engine.getRenderSystem()).getXSize();
+		
+		(engine.getHUDmanager()).setHUD1(dispStr1, hud1Color, (int)(screenX * 0.2), 15);
+		(engine.getHUDmanager()).setHUD2(dispStr2, hud2Color, (int)(screenX * 0.4), 15);
+		(engine.getHUDmanager()).setHUD3(dispStr3, hud3Color, (int)(screenX * 0.6), 15);
+		(engine.getHUDmanager()).setHUD4(dispStr4, hud4Color, (int)(screenX * 0.8), 15);
+		
+		orbitController.updateCameraPosition();
+		overheadController.updateCameraPosition();
+	}
+	
+	public void collisionDetection(){
+		Camera cam = (engine.getRenderSystem().getViewport("LEFT").getCamera());
+		Vector3f cube_diff = new Vector3f((dol.getWorldLocation()).sub(cube.getWorldLocation()));
+		Vector3f sphere_diff = new Vector3f((dol.getWorldLocation()).sub(sphere.getWorldLocation()));
+		Vector3f torus_diff = new Vector3f((dol.getWorldLocation()).sub(torus.getWorldLocation()));
+		Vector3f plane_diff = new Vector3f((dol.getWorldLocation()).sub(plane.getWorldLocation()));
+		Vector3f grass_diff = new Vector3f((dol.getWorldLocation()).sub(grass.getWorldLocation()));
+		
+		if(sitesVisited[0] == false && cube_diff.length() < 1.0f && !rc_cube.isEnabled()){
+			sitesVisited[0] = true;
+			counter++;
+			magnet1.setLocalTranslation((new Matrix4f()).translation(0.75f, 0.65f, 0.75f));
+			rc_cube.toggle();
+			hc_cube.toggle();
 		}
-		if(getDistanceGameObjs(dol, objTorus) < 2.5 && visitedObj4==false){
-			visitedObj4 = true;
-			score++;
+		if(sitesVisited[1] == false && sphere_diff.length() < 1.0f && !rc_sphere.isEnabled()){
+			sitesVisited[1] = true;
+			counter++;
+			magnet2.setLocalTranslation((new Matrix4f()).translation(-0.75f, 0.65f, 0.75f));
+			rc_sphere.toggle();
+			hc_sphere.toggle();
 		}
+		if(sitesVisited[2] == false && torus_diff.length() < 1.0f && !rc_torus.isEnabled()){
+			sitesVisited[2] = true;
+			counter++;
+			magnet3.setLocalTranslation((new Matrix4f()).translation(-0.75f, 0.65f, -0.75f));
+			rc_torus.toggle();
+			hc_torus.toggle();
+		}
+		if(sitesVisited[3] == false && plane_diff.length() < 1.0f && !rc_plane.isEnabled()){
+			sitesVisited[3] = true;
+			counter++;
+			magnet4.setLocalTranslation((new Matrix4f()).translation(0.75f, 0.65f, -0.75f));
+			rc_plane.toggle();
+			hc_plane.toggle();
+		}
+		if(grass_diff.length() < 1.5f){
+			if(stress < 3000){
+				stress = 0;
+			}
+		}
+		
+		magnet1.setLocalRotation((new Matrix4f()).rotation((float)elapsTime, 0, 1, 0));
+		magnet2.setLocalRotation((new Matrix4f()).rotation((float)elapsTime, 0, 1, 0));
+		magnet3.setLocalRotation((new Matrix4f()).rotation((float)elapsTime, 0, 1, 0));
+		magnet4.setLocalRotation((new Matrix4f()).rotation((float)elapsTime, 0, 1, 0));
 	}
 
 	@Override
-	/**Input checking with keypressed method */
 	public void keyPressed(KeyEvent e)
-	{
-		Vector3f loc, fwd, up, right, newLocation, testLoc; //Creates 3d vectors for locations and directions
-		Matrix4f newRoto, currRoto, rot, xRot, yRot, zRot;
-		Camera cam; //Initialize camera object
-		
-
-		
-			switch (e.getKeyCode())
-		{	
-			case KeyEvent.VK_C:
-				break;
-
-			case KeyEvent.VK_1:
-				//Now toggles world axis lines
-				if(axisLines==true){
-					objXLine.getRenderStates().disableRendering();
-					objYLine.getRenderStates().disableRendering();
-					objZLine.getRenderStates().disableRendering();
-					axisLines=false;
-				}else{
-					objXLine.getRenderStates().enableRendering();
-					objYLine.getRenderStates().enableRendering();
-					objZLine.getRenderStates().enableRendering();
-					axisLines=true;
-				}
-				break;
-
-			case KeyEvent.VK_W:
-			case KeyEvent.VK_2: //Move dolphin forward
-				//dol.getRenderStates().setWireframe(true);
-		
-				fwd = dol.getWorldForwardVector(); //Sets fwd to the world forward vector
-				loc = dol.getWorldLocation(); //Sets loc to current dolphin location
-				newLocation = loc.add(fwd.mul((float)(timePassed * 12f))); //Sets new location to along the forward vector * .02 ahead
-				testLoc = (new Vector3f(newLocation.x(), 0, newLocation.z()));
-				//System.out.println(newLocation.y());
-				if(!touchingLava){
-					if(newLocation.y() < 0.8){
-						if(newLocation.y() >= 0.8){
-							dol.setLocalLocation(newLocation);
-							protClient.sendMoveMessage(dol.getWorldLocation());
-						}	
-					}else{
-						dol.setLocalLocation(newLocation);	//Actually sets dolphin location to new location
-						protClient.sendMoveMessage(dol.getWorldLocation());
-					}
-				}
-				
-				
-				
-				break;
-
-			case KeyEvent.VK_S:
-			case KeyEvent.VK_3: //Move dolphin backward
-				//dol.getRenderStates().setWireframe(false);
-				
-				fwd = dol.getWorldForwardVector(); //Similar to backward moving
-				loc = dol.getWorldLocation();
-				newLocation = loc.add(fwd.mul(-(float)(timePassed * 12f)));
-				if(!touchingLava){
-					if(newLocation.y() < 0.8){
-						if(newLocation.y() >= 0.8){
-							dol.setLocalLocation(newLocation);
-							protClient.sendMoveMessage(dol.getWorldLocation());
-						}	
-					}else{
-						dol.setLocalLocation(newLocation);	//Actually sets dolphin location to new location
-						protClient.sendMoveMessage(dol.getWorldLocation());
-					}
-				}
-
-				break;
-				
-			// Yaw command
-			case KeyEvent.VK_A:
-				if(!touchingLava)
-					dol.yaw((float)(timePassed * 50f));		
-				break;
-
-			case KeyEvent.VK_D:
-				if(!touchingLava)
-					dol.yaw(-(float)(timePassed * 50f));
-				break;
-
-			// Pitch command
-			case KeyEvent.VK_UP:
-				if(!touchingLava)
-					dol.pitch((float)(timePassed * 50f));
-				
-				break;
-				
-			case KeyEvent.VK_DOWN:
-				if(!touchingLava)				
-					dol.pitch(-(float)(timePassed * 50f));
-				
-				break;
-
-			case KeyEvent.VK_SPACE:
-				/*if(onDolphin){
-					onDolphin = false;
-					cam = (engine.getEngine().getRenderSystem()).getViewport("MAIN").getCamera();
-					loc = dol.getWorldLocation();
-					fwd = dol.getLocalForwardVector();
-					up = dol.getLocalUpVector();
-					right = dol.getLocalRightVector();
-					right.mul(-1f);
-					newLocation = loc.add(right.x(), right.y(), right.z());
-					cam.setLocation(loc);
-				}else{
-					onDolphin = true;
-				}*/
-				break;
-
-
-			case KeyEvent.VK_4: //Keys 4-6 open for commands
-
+	{	
+		/*
+		switch (e.getKeyCode()){
+			case KeyEvent.VK_P:
+				rc_cube.toggle();
+				rc_sphere.toggle();
+				rc_plane.toggle();
+				rc_torus.toggle();
 				break;
 			
-			case KeyEvent.VK_5:
-
-				break;
-				
-			case KeyEvent.VK_6:
-
+			case KeyEvent.VK_O:
+				hc_cube.toggle();
+				hc_sphere.toggle();
+				hc_plane.toggle();
+				hc_torus.toggle();
 				break;
 		}
-
+		/*
+		switch (e.getKeyCode())
+		{	case KeyEvent.VK_C:
+				counter++;
+				break;
+			case KeyEvent.VK_1:
+				break;
+			case KeyEvent.VK_W:
+				Vector3f fwd = dol.getWorldForwardVector();
+				Vector3f loc = dol.getWorldLocation();
+				Vector3f newLocation = loc.add(fwd.mul((float)diffTime*15.0f));
+				Camera cam = (engine.getRenderSystem().getViewport("LEFT").getCamera());
+				
+				System.out.println("Elaps: " + (float)diffTime);
+				
+				Vector3f difference = new Vector3f((cam.getLocation()).sub(dol.getWorldLocation()));
+				//System.out.println("difference: "+difference.length());
+				if(difference.length() < 10.0f){
+					//newLocation = loc.add(fwd.mul((float)diffTime*-100.0f));
+					dol.setLocalLocation(newLocation);
+					dol.setLocalLocation(newLocation);
+				}	
+				break;
+			case KeyEvent.VK_S:
+				fwd = dol.getWorldForwardVector();
+				loc = dol.getWorldLocation();
+				cam = (engine.getRenderSystem().getViewport("LEFT").getCamera());
+				
+				difference = new Vector3f((cam.getLocation()).sub(dol.getWorldLocation()));
+				
+				if(difference.length() < 10.0f){
+					newLocation = loc.add(fwd.mul((float)diffTime*-5.0f));
+					dol.setLocalLocation(newLocation);
+				}
+				
+				
+				break;
+			case KeyEvent.VK_SPACE:
+				
+				ridingDolphin = !ridingDolphin;
+				if(ridingDolphin == false){			//Just got off dolphin
+					cam = (engine.getRenderSystem().getViewport("LEFT").getCamera());
+					loc = dol.getWorldLocation();
+					fwd = dol.getWorldForwardVector();
+					Vector3f up = dol.getWorldUpVector();
+					Vector3f right = dol.getWorldRightVector();
+					cam.setU(right);
+					cam.setV(up);
+					cam.setN(fwd);
+					cam.setLocation(loc.add(up.mul(0.3f)).add(right.mul(1.5f)));
+				}
+				//System.out.print("4 pressed riding dolphin: "+ridingDolphin);
+				
+				break;
+			case KeyEvent.VK_0:
+				if(dol.getRenderStates().isWireframe()){
+					dol.getRenderStates().setWireframe(false);
+				} else {
+					dol.getRenderStates().setWireframe(true);
+				}
+				break;
+			case KeyEvent.VK_A:
+				dol.yaw((float)diffTime*10.0f);
+				break;
+			case KeyEvent.VK_D:
+				dol.yaw((float)diffTime*-10.0f);
+				break;
+			case KeyEvent.VK_UP:
+				dol.pitch((float)diffTime*10.0f);
+				break;
+			case KeyEvent.VK_DOWN:
+				dol.pitch((float)diffTime*-10.0f);
+				break;
+		}
+		*/  //Don't need for Hw 2
 		super.keyPressed(e);
 	}
-
-	public ObjShape getGhostShape() { return ghostS; }
-	public TextureImage getGhostTexture() { return ghostTx; }
-	public GhostManager getGhostManager() { return gm; }
-	public Engine getEngine() { return engine; }
-
-	private void setupNetworking()
-	{	isClientConnected = false;	
-		try 
-		{	protClient = new ProtocolClient(InetAddress.getByName(serverAddress), serverPort, serverProtocol, this);
-		} 	catch (UnknownHostException e) 
-		{	e.printStackTrace();
-		}	catch (IOException e) 
-		{	e.printStackTrace();
-		}
-		if (protClient == null)
-		{	System.out.println("missing protocol host");
-		}
-		else
-		{	// Send the initial join message with a unique identifier for this client
-			System.out.println("sending join message to protocol host");
-			System.out.println("val: " + serverAddress + serverPort + serverProtocol);
-			protClient.sendJoinMessage();
-			//Handle ghost avatars
-			System.out.println(gm.getGhosts());
-
-		}
-	}
-
-	protected void processNetworking(float elapsTime)
-	{	// Process packets received by the client from the server
-		if (protClient != null)
-			protClient.processPackets();
-	}
-
-	public Vector3f getPlayerPosition() { return dol.getWorldLocation(); }
-
-	public void setIsConnected(boolean value) { this.isClientConnected = value; }
 	
-	private class SendCloseConnectionPacketAction extends AbstractInputAction
-	{	@Override
-		public void performAction(float time, net.java.games.input.Event evt) 
-		{	if(protClient != null && isClientConnected == true)
-			{	protClient.sendByeMessage();
-			}
+	//This will change with future assignments (maybe)
+	public GameObject getAvatar(){
+		return dol;
+	}
+	
+	//Unused in Assignment 2
+	public void setRidingDolphin(boolean b){
+		ridingDolphin = b;
+		if(ridingDolphin == false){			//Just got off dolphin
+			Camera cam = (engine.getRenderSystem().getViewport("LEFT").getCamera());
+			Vector3f loc = dol.getWorldLocation();
+			Vector3f fwd = dol.getWorldForwardVector();
+			Vector3f up = dol.getWorldUpVector();
+			Vector3f right = dol.getWorldRightVector();
+			cam.setU(right);
+			cam.setV(up);
+			cam.setN(fwd);
+			cam.setLocation(loc.add(up.mul(0.3f)).add(right.mul(1.5f)));
 		}
 	}
-
-
+	
+	public Engine getEngine(){
+		return engine;
+	}
 
 }
