@@ -63,5 +63,6 @@ public class RenderObjectSkyBox
 		gl.glDisable(GL_DEPTH_TEST);
 		gl.glDrawArrays(GL_TRIANGLES, 0, 36);
 		gl.glEnable(GL_DEPTH_TEST);
+		gl.glDisable(GL_CULL_FACE);
 	}
 }
