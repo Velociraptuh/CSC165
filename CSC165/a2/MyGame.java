@@ -1,9 +1,10 @@
 /*
+Nick Chace
 Malkylm Wright
 CSC 165-02
 Scott Gordon
 
-Assignment 2 - Dolphin Tour:
+Final Projects - Monster Battles:
 
 Controls for Dolphin:
 Keyboard:
@@ -102,7 +103,7 @@ public class MyGame extends VariableFrameRateGame
 	//GameObject for ground, and terrain
 	private GameObject ground, terrain;
 	//GameObjects for scattered items
-	private GameObject objCube, objSphere, objTorus, objPlane, objDiamond, objLava, objChest, objXLine, objYLine, objZLine, objGhost;
+	private GameObject objCube, objSphere, objTorus, objPlane, objDiamond, objLava, objChest, objXLine, objYLine, objZLine, objGhost, objSpider;
 	//Refridgerator magnets
 	private GameObject objMagnet1, objMagnet2, objMagnet3, objMagnet4;
 	//Testing Player models
@@ -113,7 +114,7 @@ public class MyGame extends VariableFrameRateGame
 	//Shape for ground and terrain
 	private ObjShape groundS, terrainS;
 	//ObjShapes for scattered items
-	private ObjShape cubeS, sphereS, torusS, planeS, diamondS, lavaS, chestS, axisS, xS, yS, zS, ghostS;
+	private ObjShape cubeS, sphereS, torusS, planeS, diamondS, lavaS, chestS, axisS, xS, yS, zS, ghostS, spiderS;
 	private ObjShape magnetS;
 	//Shape for player model
 	private ObjShape playerS;
@@ -177,6 +178,7 @@ public class MyGame extends VariableFrameRateGame
 		diamondS = new ManualDiamond();
 		ghostS = new ImportedModel("dolphinHighPoly.obj");
 		playerS = new ImportedModel("ninja_lowpoly.obj");
+		spiderS = new ImportedModel("spider.obj");
 		terrainS = new TerrainPlane(1000);
 	}
 
@@ -374,6 +376,10 @@ public class MyGame extends VariableFrameRateGame
 		initialScale = (new Matrix4f()).scaling(0.9f);
 		player5.setLocalTranslation(initialTranslation);
 		player5.setLocalScale(initialScale);
+
+		objSpider = new GameObject(GameObject.root(), spiderS);
+		initialTranslation = (new Matrix4f()).translation(20, 4, 5);
+		objSpider.setLocalTranslation(initialTranslation);
 	}
 	
 	/**Gets the single value coordinate to return to the translation function. This increases an offset padding so shapes don't spawn in the middle of the screen */
